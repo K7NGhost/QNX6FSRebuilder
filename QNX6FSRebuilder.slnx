@@ -1,0 +1,25 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/QNX6FSRebuilder.Core/QNX6FSRebuilder.Core.csproj" Id="abe79ef8-5633-4cb6-8c27-05d39f080ed2" />
+    <Project Path="src/QNX6FSRebuilder.UI/QNX6FSRebuilder.UI.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Deploy />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/QNX6FSRebuilder.Core.Tests/QNX6FSRebuilder.Core.Tests.csproj" Id="2e3d4d7d-8e6c-4717-9611-999a155a63be" />
+  </Folder>
+  <Project Path="QNX6FSRebuilder.UI/QNX6FSRebuilder.UI.csproj">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+    <Deploy />
+  </Project>
+</Solution>

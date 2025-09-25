@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="QNX6FSRebuilder.UI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:QNX6FSRebuilder.UI"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="QNX6 File System Rebuilder">
+
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header Section -->
+        <Border Grid.Row="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                BorderThickness="0,0,0,1" 
+                Padding="24,16">
+            <StackPanel>
+                <TextBlock Text="QNX6 File System Rebuilder" 
+                          Style="{StaticResource TitleTextBlockStyle}" 
+                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                <TextBlock Text="Parse and rebuild QNX6 file systems from disk images" 
+                          Style="{StaticResource BodyTextBlockStyle}" 
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
+                          Margin="0,4,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Input Section -->
+        <Border Grid.Row="1" Background="{ThemeResource LayerFillColorDefaultBrush}" 
+                Padding="24,20">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="300" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Disk Image Path Section -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,16,0">
+                    <TextBlock Text="Disk Image Source" 
+                              Style="{StaticResource BodyStrongTextBlockStyle}" 
+                              Margin="0,0,0,8" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DiskImagePathTextBox" 
+                                Grid.Column="0"
+                                PlaceholderText="Select QNX6 disk image file..."
+                                Margin="0,0,8,0" />
+                        <Button x:Name="BrowseButton" 
+                               Grid.Column="1"
+                               Content="Browse"
+                               Style="{StaticResource AccentButtonStyle}" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Options Section -->
+                <Border Grid.Row="0" Grid.Column="1" 
+                       Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                       BorderThickness="1"
+                       CornerRadius="8"
+                       Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="Options" 
+                                  Style="{StaticResource BodyStrongTextBlockStyle}" 
+                                  Margin="0,0,0,12" />
+
+                        <CheckBox x:Name="VerboseLoggingCheckBox" 
+                                 Content="Verbose logging" 
+                                 Margin="0,0,0,8" />
+
+                        <CheckBox x:Name="PreserveTimestampsCheckBox" 
+                                 Content="Preserve timestamps" 
+                                 IsChecked="True"
+                                 Margin="0,0,0,8" />
+
+                        <CheckBox x:Name="ValidateChecksumCheckBox" 
+                                 Content="Validate checksums" 
+                                 IsChecked="True"
+                                 Margin="0,0,0,12" />
+
+                        <TextBlock Text="Output Format" 
+                                  Style="{StaticResource CaptionTextBlockStyle}" 
+                                  Margin="0,0,0,4" />
+                        <ComboBox x:Name="OutputFormatComboBox" 
+                                 HorizontalAlignment="Stretch"
+                                 SelectedIndex="0">
+                            <ComboBoxItem Content="Directory Tree" />
+                            <ComboBoxItem Content="Archive (TAR)" />
+                            <ComboBoxItem Content="Archive (ZIP)" />
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- Action Buttons -->
+                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
+                           Orientation="Horizontal" 
+                           Margin="0,20,0,0">
+                    <Button x:Name="ProcessButton" 
+                           Content="Start Processing" 
+                           Style="{StaticResource AccentButtonStyle}"
+                           Padding="24,8"
+                           Margin="0,0,12,0" />
+                    <Button x:Name="CancelButton" 
+                           Content="Cancel" 
+                           IsEnabled="False"
+                           Padding="16,8"
+                           Margin="0,0,12,0" />
+                    <Button x:Name="ClearLogButton" 
+                           Content="Clear Log" 
+                           Padding="16,8" />
+                </StackPanel>
+
+                <!-- Progress Section -->
+                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" 
+                           Margin="0,16,0,0"
+                           Visibility="Collapsed"
+                           x:Name="ProgressSection">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="ProgressStatusText" 
+                                  Grid.Column="0"
+                                  Text="Processing..."
+                                  Style="{StaticResource BodyTextBlockStyle}" />
+                        <TextBlock x:Name="ProgressPercentageText" 
+                                  Grid.Column="1"
+                                  Text="0%"
+                                  Style="{StaticResource BodyTextBlockStyle}" />
+                    </Grid>
+                    <ProgressBar x:Name="MainProgressBar" 
+                                Value="0" 
+                                Maximum="100"
+                                Height="6" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Terminal/Log Section -->
+        <Border Grid.Row="2" 
+               Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+               BorderThickness="0,1,0,0"
+               Padding="24,16">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Terminal Header -->
+                <Grid Grid.Row="0" Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                              Text="Process Information" 
+                              Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button x:Name="SaveLogButton" 
+                               Content="Save Log"
+                               Style="{StaticResource DefaultButtonStyle}"
+                               Margin="0,0,8,0"
+                               Padding="12,4" />
+                        <ToggleButton x:Name="AutoScrollToggle" 
+                                     Content="Auto-scroll"
+                                     IsChecked="True"
+                                     Padding="12,4" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Terminal Area -->
+                <Border Grid.Row="1" 
+                       Background="{ThemeResource SystemColorWindowBrush}"
+                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                       BorderThickness="1"
+                       CornerRadius="4">
+                    <ScrollViewer x:Name="LogScrollViewer" 
+                                 ZoomMode="Disabled"
+                                 HorizontalScrollMode="Auto"
+                                 HorizontalScrollBarVisibility="Auto"
+                                 VerticalScrollBarVisibility="Auto">
+                        <TextBlock x:Name="LogTextBlock" 
+                                  FontFamily="Consolas, Courier New"
+                                  FontSize="12"
+                                  Padding="12"
+                                  TextWrapping="NoWrap"
+                                  Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                  Text="Ready to process QNX6 disk image..." />
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" 
+               Background="{ThemeResource LayerFillColorDefaultBrush}"
+               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+               BorderThickness="0,1,0,0"
+               Padding="24,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" 
+                          Grid.Column="0"
+                          Text="Ready"
+                          Style="{StaticResource CaptionTextBlockStyle}"
+                          VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock x:Name="FileCountText" 
+                              Text="Files: 0"
+                              Style="{StaticResource CaptionTextBlockStyle}"
+                              VerticalAlignment="Center"
+                              Margin="0,0,16,0" />
+                    <TextBlock x:Name="TimestampText" 
+                              Text=""
+                              Style="{StaticResource CaptionTextBlockStyle}"
+                              VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

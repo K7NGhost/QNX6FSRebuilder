@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "QNX6FSRebuilder.UI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "QNX6FSRebuilder.UI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
