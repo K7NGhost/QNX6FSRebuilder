@@ -16,10 +16,4 @@
   <Folder Name="/tests/">
     <Project Path="tests/QNX6FSRebuilder.Core.Tests/QNX6FSRebuilder.Core.Tests.csproj" Id="2e3d4d7d-8e6c-4717-9611-999a155a63be" />
   </Folder>
-  <Project Path="QNX6FSRebuilder.UI/QNX6FSRebuilder.UI.csproj">
-    <Platform Solution="*|ARM64" Project="ARM64" />
-    <Platform Solution="*|x64" Project="x64" />
-    <Platform Solution="*|x86" Project="x86" />
-    <Deploy />
-  </Project>
 </Solution>

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class Partition
+    public class Partition
     {
     }
 }
