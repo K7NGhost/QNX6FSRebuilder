@@ -8,7 +8,7 @@ namespace QNX6FSRebuilder.Core.Tests
 {
     public class QNX6ParserTests
     {
-        private const string TEST_QNX6_FILE_PATH = @"C:\Users\kevin\Documents\Qnx_stuff\qnx6_realImage.img";
+        private const string TEST_QNX6_FILE_PATH = @"D:\qnx6_realImage.img";
 
         [Fact]
         public void GetAllPartitions_WithQNX6File_ReturnsPartitionsList()

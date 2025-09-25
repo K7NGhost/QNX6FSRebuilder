@@ -1,4 +1,5 @@
-﻿using QNX6FSRebuilder.Core.Models;
+﻿using Microsoft.Extensions.Logging;
+using QNX6FSRebuilder.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,6 +8,7 @@ namespace QNX6FSRebuilder.Core
 {
     public class QNX6Parser
     {
+        private readonly ILogger<QNX6Parser> _logger;
         private string filePath;
         private FileStream fStream;
         private bool shouldParseSecondSuperBlock = false;
@@ -15,8 +17,9 @@ namespace QNX6FSRebuilder.Core
         private const string QNX6_PARTITION_GUID = "CEF5A9AD-73BC-4601-89F3-CDEEEEE321A1";
         private const string FREEBSD_BOOT_GUID = "83BD6B9D-7F41-11DC-BE0B-001560B84F0F";
         
-        public QNX6Parser(string filePath, string outputPath)
+        public QNX6Parser(string filePath, string outputPath, ILogger<QNX6Parser> logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             fStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
         }
 

@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.Windows.Storage.Pickers;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
@@ -30,7 +31,17 @@ namespace QNX6FSRebuilder.UI
 
         private void BrowseButton_Click(object sender, RoutedEventArgs e)
         {
+            if (sender is Button button)
+            {
+                button.IsEnabled = false;
+                var picker = new FileOpenPicker(button.XamlRoot.ContentIslandEnvironment.AppWindowId);
+                picker.CommitButtonText = "Pick QNX6 Image";
+                picker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
+                picker.ViewMode = PickerViewMode.List;
+                var file = picker.PickSingleFileAsync();
 
+                button.IsEnabled = true;
+            }
         }
 
         private void ProcessButton_Click(object sender, RoutedEventArgs e)

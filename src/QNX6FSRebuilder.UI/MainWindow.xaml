@@ -68,7 +68,9 @@
                         <Button x:Name="BrowseButton" 
                                Grid.Column="1"
                                Content="Browse"
-                               Style="{StaticResource AccentButtonStyle}" />
+                               Style="{StaticResource AccentButtonStyle}"
+                               Command="{Binding }"
+                               CommandParameter="{x:Bind BrowseButton.XamlRoot, Mode=OneWay}"/>
                     </Grid>
                 </StackPanel>
 
