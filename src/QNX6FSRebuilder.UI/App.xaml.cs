@@ -15,6 +15,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Shapes;
 using QNX6FSRebuilder.Core;
+using QNX6FSRebuilder.UI.Providers;
 using QNX6FSRebuilder.UI.ViewModels;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
@@ -34,6 +35,11 @@ namespace QNX6FSRebuilder.UI
         private Window? _window;
         public IHost? Host { get; private set; }
 
+        // Expose the main window
+        public static Window? MainWindow { get; private set; }
+
+        private static Action<string>? logSink;
+
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -51,6 +57,9 @@ namespace QNX6FSRebuilder.UI
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
             _window = new MainWindow();
+            MainWindow = _window; // Store reference to main window
+            var vm = GetService<MainWindowViewModel>();
+            vm.SetLogSink(action => logSink = action);
             _window.Activate();
 
             // Start the host
@@ -67,6 +76,7 @@ namespace QNX6FSRebuilder.UI
                         builder.AddConsole();
                         builder.AddDebug();
                         builder.SetMinimumLevel(LogLevel.Information);
+                        builder.AddProvider(new TextBoxLoggerProvider(msg => logSink?.Invoke(msg)));
                     });
 
                     // Register ViewModels

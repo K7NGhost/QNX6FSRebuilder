@@ -64,13 +64,23 @@
                         <TextBox x:Name="DiskImagePathTextBox" 
                                 Grid.Column="0"
                                 PlaceholderText="Select QNX6 disk image file..."
-                                Margin="0,0,8,0" />
+                                Margin="0,0,8,0"
+                                Text="{x:Bind ViewModel.SelectedFilePath, Mode=OneWay}"/>
                         <Button x:Name="BrowseButton" 
                                Grid.Column="1"
                                Content="Browse"
                                Style="{StaticResource AccentButtonStyle}"
-                               Command="{x:Bind ViewModel.BrowseFileCommand}"
-                               CommandParameter="{x:Bind BrowseButton.XamlRoot, Mode=OneWay}"/>
+                               Command="{x:Bind ViewModel.BrowseFileCommand}"/>
+                    </Grid>
+
+                    <TextBlock Text="Extracted Files Output" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0, 20, 0, 8"></TextBlock>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ExtractedFilesOutputTextBox" Grid.Column="0" PlaceholderText="Select output path for extracted files" Margin="0,0,8,0" Text="{x:Bind ViewModel.SelectedOutputPath, Mode=OneWay}"></TextBox>
+                        <Button x:Name="BrowseOutputPathButton" Grid.Column="1" Content="Browse" Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.BrowseOutputPathCommand}"></Button>
                     </Grid>
                 </StackPanel>
 
@@ -86,10 +96,6 @@
                                   Style="{StaticResource BodyStrongTextBlockStyle}" 
                                   Margin="0,0,0,12" />
 
-                        <CheckBox x:Name="VerboseLoggingCheckBox" 
-                                 Content="Verbose logging" 
-                                 Margin="0,0,0,8" />
-
                         <CheckBox x:Name="PreserveTimestampsCheckBox" 
                                  Content="Preserve timestamps" 
                                  IsChecked="True"
@@ -99,6 +105,15 @@
                                  Content="Validate checksums" 
                                  IsChecked="True"
                                  Margin="0,0,0,12" />
+
+                        <CheckBox x:Name="GetDeletedFilesCheckBox"
+                                  Content="Get deleted files"
+                                  IsChecked="True"
+                                  Margin="0,0,0,12"></CheckBox>
+                        
+                        <CheckBox x:Name="ParseSecondSuperblock"
+                                  Content="Parse second superblock"
+                                  Margin="0,0,0,12"></CheckBox>
 
                         <TextBlock Text="Output Format" 
                                   Style="{StaticResource CaptionTextBlockStyle}" 
@@ -121,7 +136,8 @@
                            Content="Start Processing" 
                            Style="{StaticResource AccentButtonStyle}"
                            Padding="24,8"
-                           Margin="0,0,12,0" />
+                           Margin="0,0,12,0" 
+                           Command="{x:Bind ViewModel.ProcessCommand}"/>
                     <Button x:Name="CancelButton" 
                            Content="Cancel" 
                            IsEnabled="False"
@@ -129,7 +145,8 @@
                            Margin="0,0,12,0" />
                     <Button x:Name="ClearLogButton" 
                            Content="Clear Log" 
-                           Padding="16,8" />
+                           Padding="16,8"
+                           Command="{x:Bind ViewModel.ClearLogCommand}"/>
                 </StackPanel>
 
                 <!-- Progress Section -->
@@ -144,15 +161,15 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock x:Name="ProgressStatusText" 
                                   Grid.Column="0"
-                                  Text="Processing..."
+                                  Text="{x:Bind ViewModel.ProgressStatusText}"
                                   Style="{StaticResource BodyTextBlockStyle}" />
                         <TextBlock x:Name="ProgressPercentageText" 
                                   Grid.Column="1"
-                                  Text="0%"
+                                  Text="{x:Bind ViewModel.ProgressPercentageText}"
                                   Style="{StaticResource BodyTextBlockStyle}" />
                     </Grid>
                     <ProgressBar x:Name="MainProgressBar" 
-                                Value="0" 
+                                Value="{x:Bind ViewModel.ProgressValue, Mode=OneWay}" 
                                 Maximum="100"
                                 Height="6" />
                 </StackPanel>
@@ -195,7 +212,7 @@
 
                 <!-- Terminal Area -->
                 <Border Grid.Row="1" 
-                       Background="{ThemeResource SystemColorWindowBrush}"
+                       Background="Black"
                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                        BorderThickness="1"
                        CornerRadius="4">
@@ -210,7 +227,7 @@
                                   Padding="12"
                                   TextWrapping="NoWrap"
                                   Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                                  Text="Ready to process QNX6 disk image..." />
+                                  Text="{x:Bind ViewModel.LogText, Mode=TwoWay}"/>
                     </ScrollViewer>
                 </Border>
             </Grid>
@@ -229,17 +246,17 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="StatusText" 
                           Grid.Column="0"
-                          Text="Ready"
+                          Text="{x:Bind ViewModel.StatusText}"
                           Style="{StaticResource CaptionTextBlockStyle}"
                           VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <TextBlock x:Name="FileCountText" 
-                              Text="Files: 0"
+                              Text="{x:Bind ViewModel.FileCount, Mode=OneWay}"
                               Style="{StaticResource CaptionTextBlockStyle}"
                               VerticalAlignment="Center"
                               Margin="0,0,16,0" />
                     <TextBlock x:Name="TimestampText" 
-                              Text=""
+                              Text="{x:Bind ViewModel.TimestampText, Mode=OneWay}"
                               Style="{StaticResource CaptionTextBlockStyle}"
                               VerticalAlignment="Center" />
                 </StackPanel>
