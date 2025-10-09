@@ -3,6 +3,7 @@ using QNX6FSRebuilder.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using QNX6FSRebuilder.Core.Helpers;
 
 namespace QNX6FSRebuilder.Core
 {
@@ -13,19 +14,37 @@ namespace QNX6FSRebuilder.Core
         private FileStream fStream;
         private bool shouldParseSecondSuperBlock = false;
 
+        // To be used to determine the output partition
+        private string rootFolder = "";
+        private string partitionString = "";
+        private string partitionPath = "";
+
         private static readonly byte[] GPT_SIGNATURE = Encoding.ASCII.GetBytes("EFI PART");
         private const string QNX6_PARTITION_GUID = "CEF5A9AD-73BC-4601-89F3-CDEEEEE321A1";
         private const string FREEBSD_BOOT_GUID = "83BD6B9D-7F41-11DC-BE0B-001560B84F0F";
+        private const int SUPERBLOCK_SIZE = 0x1000;
         
         public QNX6Parser(ILogger<QNX6Parser> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void ParseQNX6(string filePath, string outputPath)
+        public async void ParseQNX6Async(string filePath, string outputPath)
         {
+            rootFolder = Path.Combine(outputPath, "extracted");
+            _logger.LogInformation($"The root folder will be: {rootFolder}");
             fStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            GetAllPartitions();
+            List<Partition> partitions = GetAllPartitions();
+            for (int i = 0; i < partitions.Count; i++)
+            {
+                _logger.LogInformation($"{partitions.ElementAt(i)}");
+                partitionString = $"partition_{i + 1}";
+                partitionPath = Path.Combine(rootFolder, partitionString);
+                _logger.LogInformation($"The partition path is: {partitionPath}");
+                // Implement ParsePartition function here
+                await ParsePartitionAsync(partitions.ElementAt(i));
+
+            }
         }
 
         public List<Partition> GetAllPartitions()
@@ -37,7 +56,7 @@ namespace QNX6FSRebuilder.Core
             var gptSig = new byte[8];
             fStream.ReadExactly(gptSig, 0, 8);
 
-            if (ByteArrayEquals(gptSig, GPT_SIGNATURE))
+            if (Helpers.Helpers.ByteArrayEquals(gptSig, GPT_SIGNATURE))
             {
                 _logger.LogInformation("GPT Signature found, parsing partitions...");
 
@@ -57,7 +76,7 @@ namespace QNX6FSRebuilder.Core
                     byte[] entryBytes = new byte[128];
                     fStream.Read(entryBytes, 0, 128);
 
-                    if (!IsEmptyByteArray(entryBytes))
+                    if (!Helpers.Helpers.IsEmptyByteArray(entryBytes))
                     {
                         byte[] partitionType = new byte[16];
                         Array.Copy(entryBytes, 0, partitionType, 0, 16);
@@ -95,7 +114,7 @@ namespace QNX6FSRebuilder.Core
                     byte[] entryBytes = new byte[16];
                     fStream.Read(entryBytes, 0, 16);
 
-                    if (!IsEmptyByteArray(entryBytes))
+                    if (!Helpers.Helpers.IsEmptyByteArray(entryBytes))
                     {
                         byte partitionType = entryBytes[4];
 
@@ -124,33 +143,36 @@ namespace QNX6FSRebuilder.Core
                     }
                 }
             }
-
             return partitions;
-
         }
 
-        private static bool ByteArrayEquals(byte[] a1, byte[] a2)
+        private async Task<Partition> ParsePartitionAsync(Partition partition)
         {
-            if (a1.Length != a2.Length)
-                return false;
-            for (int i = 0; i < a1.Length; i++)
+            ulong startSector = partition.GetStartLba();
+            ulong offsetIntoPartition = 16;
+            long targetSector = (long)(startSector + offsetIntoPartition);
+            long superblockOffset = targetSector * 512;
+            fStream.Seek((long)superblockOffset, SeekOrigin.Begin);
+
+            byte[] superblockData = new byte[SUPERBLOCK_SIZE];
+            int bytesRead = await fStream.ReadAsync(superblockData, 0, SUPERBLOCK_SIZE);
+            _logger.LogInformation($"Byte Offset: {superblockOffset} (0x{superblockOffset:X})");
+            Superblock superblock = new Superblock(superblockData);
+
+            _logger.LogInformation($"{superblock}");
+            _logger.LogInformation($"INodes: {superblock.RootNodeInode}");
+            _logger.LogInformation($"bitmap: {superblock.RootNodeBitmap}");
+            _logger.LogInformation($"longfilename: {superblock.RootNodeLongFilename}");
+
+            long superblockEndOffset = superblockOffset + SUPERBLOCK_SIZE;
+
+            if (superblock.Magic != 0x68191122)
             {
-                if (a1[i] != a2[i])
-                    return false;
+                _logger.LogInformation("Not a QNX6 Partition");
+                return null;
             }
-            return true;
-        }
 
-        private static bool IsEmptyByteArray(byte[] array)
-        {
-            foreach (var b in array)
-            {
-                if (b != 0)
-                    return false;
-            }
-            return true;
-        }
-
-
+            return partition;
+        } 
     }
 }

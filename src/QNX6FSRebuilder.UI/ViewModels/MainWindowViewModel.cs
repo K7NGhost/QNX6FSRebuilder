@@ -182,7 +182,7 @@ namespace QNX6FSRebuilder.UI.ViewModels
             {
                 _logger.LogInformation("");
                 var qnx6Parser = App.GetService<QNX6Parser>();
-                qnx6Parser.ParseQNX6(SelectedFilePath, SelectedOutputPath);
+                qnx6Parser.ParseQNX6Async(SelectedFilePath, SelectedOutputPath);
                 
             }
         }

@@ -6,5 +6,9 @@ namespace QNX6FSRebuilder.Core.Models
 {
     internal class RootNode
     {
+        public RootNode(byte[] data)
+        {
+            
+        }
     }
 }
