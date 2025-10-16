@@ -1,9 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
+using QNX6FSRebuilder.Core.Helpers;
 using QNX6FSRebuilder.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using QNX6FSRebuilder.Core.Helpers;
+using System.Xml.Linq;
 
 namespace QNX6FSRebuilder.Core
 {
@@ -23,6 +24,7 @@ namespace QNX6FSRebuilder.Core
         private const string QNX6_PARTITION_GUID = "CEF5A9AD-73BC-4601-89F3-CDEEEEE321A1";
         private const string FREEBSD_BOOT_GUID = "83BD6B9D-7F41-11DC-BE0B-001560B84F0F";
         private const int SUPERBLOCK_SIZE = 0x1000;
+        private const int INODE_SIZE = 128;
         
         public QNX6Parser(ILogger<QNX6Parser> logger)
         {
@@ -31,6 +33,8 @@ namespace QNX6FSRebuilder.Core
 
         public async void ParseQNX6Async(string filePath, string outputPath)
         {
+            if (string.IsNullOrWhiteSpace(outputPath))
+                return;
             rootFolder = Path.Combine(outputPath, "extracted");
             _logger.LogInformation($"The root folder will be: {rootFolder}");
             fStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
@@ -165,14 +169,127 @@ namespace QNX6FSRebuilder.Core
             _logger.LogInformation($"longfilename: {superblock.RootNodeLongFilename}");
 
             long superblockEndOffset = superblockOffset + SUPERBLOCK_SIZE;
-
+            
             if (superblock.Magic != 0x68191122)
             {
                 _logger.LogInformation("Not a QNX6 Partition");
                 return null;
             }
-
+            var test = ParseINodes(superblock, superblock.RootNodeInode, superblockEndOffset);
             return partition;
+        } 
+
+        private async Task<List<Object>> ParseINodes(Superblock superBlock, RootNode rootNode, long offset)
+        {
+            _logger.LogInformation("[+] Parsing iNodes...");
+
+            int inodeSize = 128;
+            uint blockSize = superBlock.BlockSize;
+            var root = rootNode;
+
+            int currentLevel = root.Levels;
+            var pointers = new List<uint>(root.PointerArray);
+
+            while (currentLevel > 0)
+            {
+                var nextPointers = new List<uint>();
+
+                foreach (var ptr in pointers)
+                {
+                    long blockOffset = ptr * blockSize + offset;
+                    fStream.Seek(blockOffset, SeekOrigin.Begin);
+
+                    byte[] blockData = new byte[blockSize];
+                    int bytesRead = fStream.Read(blockData, 0, (int)blockSize);
+
+                    for (int i = 0; i < bytesRead; i += 4)
+                    {
+                        if (i + 4 > bytesRead)
+                            break;
+
+                        uint p = BitConverter.ToUInt32(blockData, i);
+                        nextPointers.Add(p);
+                    }
+                }
+
+                pointers = nextPointers;
+                currentLevel--;
+            }
+
+            var inodes = new List<object>();
+            int inodeIndex = 0;
+
+            if (ReferenceEquals(root, superBlock.RootNodeInode))
+                inodeIndex = 1;
+            else if (ReferenceEquals(root, superBlock.RootNodeLongFilename))
+                inodeIndex = 0;
+
+            _logger.LogInformation($"Amount of pointers in the array are {pointers.Count}");
+
+            int counter = 0;
+
+            foreach (var ptr in pointers)
+            {
+                long blockOffset = ptr * blockSize + offset;
+                fStream.Seek(blockOffset, SeekOrigin.Begin);
+
+                byte[] blockData = new byte[blockSize];
+                int bytesRead = fStream.Read(blockData, 0, (int)blockSize);
+
+                for (int i = 0; i < bytesRead; i += inodeSize)
+                {
+                    if (i + inodeSize > bytesRead)
+                        break;
+
+                    byte[] chunk = new byte[inodeSize];
+                    Array.Copy(blockData, i, chunk, 0, inodeSize);
+
+                    bool isEmpty = chunk.All(b => b == 0x00);
+                    if (!isEmpty)
+                    {
+                        if (ReferenceEquals(root, superBlock.RootNodeLongFilename))
+                        {
+                            byte[] longData = new byte[512];
+                            Array.Copy(blockData, i, longData, 0, Math.Min(512, bytesRead - i));
+                            var longInode = new LongNameINode(longData)
+                            {
+                                Index = inodeIndex
+                            };
+                            inodes.Add(longInode);
+                            inodeIndex++;
+                            break;
+                        }
+                        else if (ReferenceEquals(root, superBlock.RootNodeInode))
+                        {
+                            var inodeObj = new INode(chunk)
+                            {
+                                Index = inodeIndex
+                            };
+                            if (inodeObj.Status != 1 && inodeObj.Status != 2 && inodeObj.Status != 3)
+                            {
+                                inodeIndex++;
+                                continue;
+                            }
+                            inodes.Add(inodeObj);
+                            inodeIndex++;
+                        }
+                        else
+                        {
+                            inodeIndex++;
+                        }
+                    }
+                    else
+                    {
+                        inodeIndex++;
+                    }
+                }
+            }
+
+            _logger.LogInformation($"Amount of inodes indexed={inodeIndex} and amount of inodes in superblock={superBlock.NumOfInodes}");
+            _logger.LogInformation($"Amount of pointers invalid are {counter}");
+
+            return inodes;
+
         } 
     }
 }
