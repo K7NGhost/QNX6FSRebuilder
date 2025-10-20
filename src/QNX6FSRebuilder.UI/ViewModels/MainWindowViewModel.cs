@@ -13,6 +13,9 @@ using System.IO;
 using Windows.Security.Cryptography.Core;
 using Microsoft.UI.Dispatching;
 using QNX6FSRebuilder.Core;
+using System.Collections.ObjectModel;
+using QNX6FSRebuilder.Core.Models;
+using System.Linq;
 
 namespace QNX6FSRebuilder.UI.ViewModels
 {
@@ -58,12 +61,54 @@ namespace QNX6FSRebuilder.UI.ViewModels
         [ObservableProperty]
         private string timestampText = string.Empty;
 
+        [ObservableProperty]
+        private bool isOptionsEnabled;
+
+        [ObservableProperty]
+        private ObservableCollection<Partition> partitions = new();
+
 
         public MainWindowViewModel(ILogger<MainWindowViewModel> logger)
         {
             _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogInformation("MainWindowViewModel initialized");
+        }
+
+        [RelayCommand]
+        private async Task GetPartitionsAsync()
+        {
+            try
+            {
+                IsOptionsEnabled = false;
+                Partitions.Clear();
+
+                _logger.LogInformation("Reading partitions...");
+                await Task.Run(() =>
+                {
+                    var parts = App.GetService<QNX6Parser>().GetAllPartitions();
+                    foreach (var p in parts)
+                        Partitions.Add(p);
+                });
+
+                _logger.LogInformation($"Found {Partitions.Count} partitions.");
+                IsOptionsEnabled = Partitions.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting partitions");
+            }
+        }
+
+        private bool CanParse() => IsOptionsEnabled && Partitions.Any();
+
+        [RelayCommand]
+        private async Task ParseSelectedPartitionsAsync()
+        {
+            foreach(var partition in Partitions)
+            {
+                await App.GetService<QNX6Parser>().ParsePartitionAsync(partition);
+            }
         }
 
         [RelayCommand]
@@ -169,10 +214,10 @@ namespace QNX6FSRebuilder.UI.ViewModels
         }
 
         [RelayCommand]
-        private void Process()
+        private async Task ProcessAsync()
         {
             _logger.LogInformation($"File path to process: {SelectedFilePath}");
-            if (string.IsNullOrEmpty(SelectedFilePath) || !File.Exists(SelectedFilePath))
+            if (string.IsNullOrEmpty(SelectedFilePath) || !System.IO.File.Exists(SelectedFilePath))
             {
                 _logger.LogInformation("Error: Please select a valid QNX6 disk image file.");
                 StatusText = "No file selected";
@@ -182,7 +227,7 @@ namespace QNX6FSRebuilder.UI.ViewModels
             {
                 _logger.LogInformation("");
                 var qnx6Parser = App.GetService<QNX6Parser>();
-                qnx6Parser.ParseQNX6Async(SelectedFilePath, SelectedOutputPath);
+                await Task.Run(() => qnx6Parser.ParseQNX6Async(SelectedFilePath, SelectedOutputPath)) ;
                 
             }
         }

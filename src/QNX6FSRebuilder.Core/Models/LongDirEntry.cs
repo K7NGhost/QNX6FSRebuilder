@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class LongDirEntry
+    public class LongDirEntry
     {
         public int? ParentInode { get; set; }
         public uint InodeNumber { get; private set; }

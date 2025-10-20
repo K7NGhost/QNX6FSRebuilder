@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class ExtendedBootRecord
+    public class ExtendedBootRecord
     {
         public byte[] Unused { get; private set; }
         public byte[] FirstEntry { get; private set; }

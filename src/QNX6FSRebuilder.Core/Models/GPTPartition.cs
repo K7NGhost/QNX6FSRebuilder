@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class GPTPartition
+    public class GPTPartition
     {
         public Guid PartitionTypeGuid { get; private set; }
         public Guid UniquePartitionGuid { get; private set; }

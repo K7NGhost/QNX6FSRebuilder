@@ -1,9 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
 using QNX6FSRebuilder.Core.Helpers;
+using QNX6FSRebuilder.Core.Interfaces;
 using QNX6FSRebuilder.Core.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace QNX6FSRebuilder.Core
@@ -15,10 +18,18 @@ namespace QNX6FSRebuilder.Core
         private FileStream fStream;
         private bool shouldParseSecondSuperBlock = false;
 
+        // Important variables
+        private Dictionary<int, IINode> InodesMap;
+        private Dictionary<int, IINode> LongNamesMap;
+        private Dictionary<uint, List<DirEntry>> DirMap;
+        private List<Models.File> Files;
+        private List<LongFile> LongFiles;
+
         // To be used to determine the output partition
-        private string rootFolder = "";
+        private string extractionFolder = "";
         private string partitionString = "";
         private string partitionPath = "";
+        private string loggingPath = "";
 
         private static readonly byte[] GPT_SIGNATURE = Encoding.ASCII.GetBytes("EFI PART");
         private const string QNX6_PARTITION_GUID = "CEF5A9AD-73BC-4601-89F3-CDEEEEE321A1";
@@ -31,19 +42,20 @@ namespace QNX6FSRebuilder.Core
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async void ParseQNX6Async(string filePath, string outputPath)
+        public async Task ParseQNX6Async(string filePath, string outputPath)
         {
             if (string.IsNullOrWhiteSpace(outputPath))
                 return;
-            rootFolder = Path.Combine(outputPath, "extracted");
-            _logger.LogInformation($"The root folder will be: {rootFolder}");
+            extractionFolder = Path.Combine(outputPath, "extracted");
+            loggingPath = Path.Combine(outputPath, "logs");
+            _logger.LogInformation($"The root folder will be: {extractionFolder}");
             fStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             List<Partition> partitions = GetAllPartitions();
             for (int i = 0; i < partitions.Count; i++)
             {
                 _logger.LogInformation($"{partitions.ElementAt(i)}");
                 partitionString = $"partition_{i + 1}";
-                partitionPath = Path.Combine(rootFolder, partitionString);
+                partitionPath = Path.Combine(extractionFolder, partitionString);
                 _logger.LogInformation($"The partition path is: {partitionPath}");
                 // Implement ParsePartition function here
                 await ParsePartitionAsync(partitions.ElementAt(i));
@@ -51,6 +63,7 @@ namespace QNX6FSRebuilder.Core
             }
         }
 
+        // Returns all the partitions of the image
         public List<Partition> GetAllPartitions()
         {
 
@@ -150,7 +163,8 @@ namespace QNX6FSRebuilder.Core
             return partitions;
         }
 
-        private async Task<Partition> ParsePartitionAsync(Partition partition)
+        // Parse each partition individually
+        public async Task<Partition> ParsePartitionAsync(Partition partition)
         {
             ulong startSector = partition.GetStartLba();
             ulong offsetIntoPartition = 16;
@@ -175,11 +189,253 @@ namespace QNX6FSRebuilder.Core
                 _logger.LogInformation("Not a QNX6 Partition");
                 return null;
             }
-            var test = ParseINodes(superblock, superblock.RootNodeInode, superblockEndOffset);
+
+            // parse superblock Inodes
+            var inodes = await ParseInodes(superblock, superblock.RootNodeInode, superblockEndOffset);
+            _logger.LogInformation($"Num of iNodes: {inodes.Count}");
+
+            InodesMap = Helpers.Helpers.BuildINodeMap(inodes);
+
+
+            // parse superblock longInodes
+            var longNames = await ParseInodes(superblock, superblock.RootNodeLongFilename, superblockEndOffset);
+            LongNamesMap = Helpers.Helpers.BuildINodeMap(longNames);
+
+            // Get the directories
+            var (directories, longDirs) = ParseDirEntries(superblock, inodes.Cast<INode>(), superblockEndOffset);
+            DirMap = Helpers.Helpers.BuildDirMap(directories);
+
+            // Build File list
+            Files = new List<Models.File>();
+            foreach ( var dir in directories)
+            {
+                if (dir.InodeNumber == 0)
+                    continue;
+                try
+                {
+                    if (InodesMap.TryGetValue((int)dir.InodeNumber, out var inode) && inode != null)
+                    {
+                        var file = new Models.File(dir, (INode)inode, fStream, (int)superblock.BlockSize, superblockEndOffset);
+                        Files.Add(file);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"{ex}");
+                }
+            }
+
+            LongFiles = new List<LongFile>();
+            foreach (var dir in longDirs)
+            {
+                if (dir.InodeNumber == 0)
+                    continue;
+
+                try
+                {
+                    if (InodesMap.TryGetValue((int)dir.InodeNumber, out var inode) &&
+                        LongNamesMap.TryGetValue((int)dir.LongFileInumber, out var longInode) &&
+                        inode != null && longInode != null)
+                    {
+                        var longFile = new LongFile(dir, (INode)inode, (LongNameINode)longInode, fStream, (int)superblock.BlockSize, superblockEndOffset);
+                        if (longFile.FileName.Length < 510)
+                            LongFiles.Add(longFile);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"{ex}");
+                }
+
+                // combine regular + files
+                var fileMap = Files.ToDictionary(f => (uint)f.FileId, f => (IFile)f);
+                var longFileMap = LongFiles.ToDictionary(f => (uint)f.FileId, f => (IFile)f);
+
+                // Merge both dictionaries
+                var combinedMap = fileMap.Concat(longFileMap)
+                             .GroupBy(kv => kv.Key)
+                             .ToDictionary(g => g.Key, g => g.First().Value);
+
+                var combinedList = Files.Cast<IFile>().Concat(LongFiles.Cast<IFile>()).ToList();
+
+                // Construct the files
+                ConstructFiles(extractionFolder, combinedList, combinedMap);
+
+            }
             return partition;
         } 
 
-        private async Task<List<Object>> ParseINodes(Superblock superBlock, RootNode rootNode, long offset)
+        private void ConstructFiles(string extractionPath, List<IFile> files, Dictionary<uint, IFile> fileMap)
+        {
+            var paths = new Dictionary<uint, string>();
+            
+            // build all relative paths
+            foreach (var f in files)
+            {
+                string path = Helpers.Helpers.BuildPaths(fileMap, f);
+                if (!string.IsNullOrEmpty(path))
+                    paths[(uint)f.FileId] = path;
+            }
+
+            // Construct all files
+            foreach (var kvp in paths)
+            {
+                uint fileId = kvp.Key;
+                string relativePath = kvp.Value;
+                var file = fileMap[fileId];
+
+                string fullPath = Path.Combine(extractionPath, relativePath);
+
+                try
+                {
+                    if (file.FileType == "directory")
+                    {
+                        Directory.CreateDirectory(fullPath);
+                        continue;
+                    }
+
+                    // Ensure parent directory exists
+                    Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+
+                    // Try to set file timestamps (accessed, modified)
+                    try
+                    {
+                        var modified = DateTimeOffset.FromUnixTimeSeconds(file.ModifiedTime).UtcDateTime;
+                        var accessed = DateTimeOffset.FromUnixTimeSeconds(file.AccessedTime).UtcDateTime;
+                        System.IO.File.SetLastWriteTimeUtc(Path.GetDirectoryName(fullPath)!, modified);
+                        System.IO.File.SetLastAccessTimeUtc(Path.GetDirectoryName(fullPath)!, accessed);
+                    }
+                    catch (Exception tsEx)
+                    {
+                        _logger.LogWarning(tsEx, $"Failed to set timestamps for: {fullPath}");
+                    }
+
+                    // Write file contents
+                    try
+                    {
+                        using var outStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None);
+
+                        foreach (var dataBlock in file.FileData)
+                        {
+                            if (dataBlock == null || dataBlock.SequenceEqual(new byte[] { 0x00 }) || dataBlock.Length == 0)
+                                continue;
+
+                            // If dataBlock represents block pointers (e.g., 0 or 0xFFFFFFFF), skip
+                            if (BitConverter.ToUInt32(dataBlock, 0) == 0xFFFFFFFF)
+                                continue;
+
+                            outStream.Write(dataBlock, 0, dataBlock.Length);
+                        }
+                    }
+                    catch (Exception writeEx)
+                    {
+                        _logger.LogError($"{writeEx}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"{ex}");
+                }
+            }
+        }
+
+        private (List<DirEntry> Directories, List<LongDirEntry> LongDirectories) ParseDirEntries(Superblock superblock, IEnumerable<INode> inodes, long offset)
+        {
+            var dirEntries = new List<DirEntry>();
+            var longDirEntries = new List<LongDirEntry>();
+            uint blockSize = superblock.BlockSize;
+
+            foreach (var inode in inodes)
+            {
+                if ((inode.Mode & 0xF000) != 0x4000)
+                    continue;
+
+                var pointers = new List<uint>(inode.BlockPointerArray);
+                int currentLevels = inode.Levels;
+
+                if (currentLevels > 0)
+                {
+                    var nextPointers = new List<uint>();
+                    foreach (var ptr in pointers)
+                    {
+                        if (ptr == 0 || ptr == 0xFFFFFFFF)
+                            continue;
+
+                        long blockOffset = ptr * blockSize + offset;
+                        fStream.Seek(blockOffset, SeekOrigin.Begin);
+
+                        byte[] blockData = new byte[blockSize];
+                        int bytesRead = fStream.Read(blockData, 0, (int)blockSize);
+
+                        for (int i = 0; i < bytesRead; i += 4)
+                        {
+                            if (i + 4 > bytesRead)
+                                break;
+
+                            uint p = BitConverter.ToUInt32(blockData, i);
+                            nextPointers.Add(p);
+                        }
+                    }
+
+                    pointers = nextPointers;
+                    currentLevels--;
+                }
+
+                // Iterate through each block pointer
+                foreach (var ptr in pointers)
+                {
+                    if (ptr == 0 || ptr == 0xFFFFFFFF)
+                        continue;
+
+                    long blockOffset = ptr * blockSize + offset;
+                    fStream.Seek(blockOffset, SeekOrigin.Begin);
+
+                    byte[] blockData = new byte[blockSize];
+                    int bytesRead = fStream.Read(blockData, 0, (int)blockSize);
+
+                    // Each directory entry = 32 bytes
+                    for (int i = 0; i < bytesRead; i += 32)
+                    {
+                        if (i + 32 > bytesRead)
+                            break;
+
+                        byte[] chunk = new byte[32];
+                        Array.Copy(blockData, i, chunk, 0, 32);
+
+                        // Skip empty entries (all zeros)
+                        if (chunk.All(b => b == 0x00))
+                            continue;
+
+                        var entry = new DirEntry(chunk);
+
+                        if (entry.Name == "." || entry.Name == "..")
+                            continue;
+
+                        if (entry.NameLength > 27)
+                        {
+                            // Long directory entry
+                            var longEntry = new LongDirEntry(chunk)
+                            {
+                                ParentInode = inode.Index
+                            };
+
+                            if (LongNamesMap.ContainsKey((int)longEntry.LongFileInumber) && longEntry.Size <= 255)
+                                longDirEntries.Add(longEntry);
+
+                            continue;
+                        }
+
+                        // Normal directory entry
+                        entry.ParentInode = inode.Index;
+                        dirEntries.Add(entry);
+                    }
+                }
+            }
+            return (dirEntries, longDirEntries);
+        }
+
+
+        private async Task<List<IINode>> ParseInodes(Superblock superBlock, RootNode rootNode, long offset)
         {
             _logger.LogInformation("[+] Parsing iNodes...");
 
@@ -216,7 +472,7 @@ namespace QNX6FSRebuilder.Core
                 currentLevel--;
             }
 
-            var inodes = new List<object>();
+            var inodes = new List<IINode>();
             int inodeIndex = 0;
 
             if (ReferenceEquals(root, superBlock.RootNodeInode))

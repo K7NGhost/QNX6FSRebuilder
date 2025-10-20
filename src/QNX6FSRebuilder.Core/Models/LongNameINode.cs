@@ -1,13 +1,14 @@
-﻿using System;
+﻿using QNX6FSRebuilder.Core.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class LongNameINode
+    public class LongNameINode : IINode
     {
-        public int? Index { get; set; }
+        public int Index { get; set; }
         public ushort NameLength { get; private set; }
         public string Name { get; private set; }
 

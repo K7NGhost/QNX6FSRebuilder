@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class RootNode
+    public class RootNode
     {
         public ulong Size { get; private set; }
         public List<uint> PointerArray { get; set; }

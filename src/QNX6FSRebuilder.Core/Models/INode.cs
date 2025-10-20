@@ -1,12 +1,13 @@
-﻿using System;
+﻿using QNX6FSRebuilder.Core.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class INode
+    public class INode : IINode
     {
-        public int? Index { get; set; }
+        public int Index { get; set; }
         public ulong Size { get; private set; }
         public uint Uid { get; private set; }
         public uint Gid { get; private set; }

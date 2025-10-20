@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class Superblock
+    public class Superblock
     {
         public uint Magic { get; }
         public uint Checksum { get; }

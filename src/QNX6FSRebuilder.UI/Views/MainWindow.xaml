@@ -135,11 +135,13 @@
                            Orientation="Horizontal" 
                            Margin="0,20,0,0">
                     <Button x:Name="ProcessButton" 
-                           Content="Start Processing" 
+                           Content="Process entire image" 
                            Style="{StaticResource AccentButtonStyle}"
                            Padding="24,8"
                            Margin="0,0,12,0" 
                            Command="{x:Bind ViewModel.ProcessCommand}"/>
+                    <Button Content="Get partitions" Style="{StaticResource AccentButtonStyle}" Padding="24, 8" Margin="0,0,12,0" Command="{x:Bind ViewModel.GetPartitionsCommand}"></Button>
+                    <Button Content="Process partitions" Style="{StaticResource AccentButtonStyle}" Padding="24, 8" Margin="0,0,12,0" Command="{x:Bind ViewModel.ParseSelectedPartitionsCommand}"></Button>
                     <Button x:Name="CancelButton" 
                            Content="Cancel" 
                            IsEnabled="False"

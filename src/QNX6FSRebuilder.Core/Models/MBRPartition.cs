@@ -4,7 +4,7 @@ using System.Text;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class MBRPartition
+    public class MBRPartition
     {
         public byte BootIndicator { get; private set; }
         public byte[] StartCHS { get; private set; }

@@ -13,21 +13,29 @@ namespace QNX6FSRebuilder.Core.Models
 
         public DirEntry(byte[] data)
         {
-            if (data.Length < 5)
-                throw new ArgumentException("Not enough data to parse DirEntry");
-
-            using (var ms = new MemoryStream(data))
-            using (var br = new BinaryReader(ms))
+            try
             {
-                InodeNumber = br.ReadUInt32(); // <I> = 4 bytes
-                NameLength = br.ReadByte();    // <B> = 1 byte
+                if (data.Length < 5)
+                    throw new ArgumentException("Not enough data to parse DirEntry");
 
-                if (data.Length < 5 + NameLength)
-                    throw new ArgumentException("Data too short for specified name length.");
+                using (var ms = new MemoryStream(data))
+                using (var br = new BinaryReader(ms))
+                {
+                    InodeNumber = br.ReadUInt32(); // <I> = 4 bytes
+                    NameLength = br.ReadByte();    // <B> = 1 byte
 
-                byte[] nameBytes = br.ReadBytes(NameLength);
-                Name = Encoding.UTF8.GetString(nameBytes);
+                    if (data.Length < 5 + NameLength)
+                        throw new ArgumentException("Data too short for specified name length.");
+
+                    byte[] nameBytes = br.ReadBytes(NameLength);
+                    Name = Encoding.UTF8.GetString(nameBytes);
+                }
             }
+            catch (Exception ex)
+            {
+
+            }
+            
         }
 
         public override string ToString()

@@ -1,11 +1,12 @@
-﻿using System;
+﻿using QNX6FSRebuilder.Core.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Xml.Linq;
 
 namespace QNX6FSRebuilder.Core.Models
 {
-    internal class File
+    public class File : IFile
     {
 
         private readonly DirEntry? _dirEntry;
@@ -14,16 +15,16 @@ namespace QNX6FSRebuilder.Core.Models
         private readonly FileStream _fStream;
         private readonly long _superblockEndOffset;
 
-        public int? ParentId { get; private set; }
-        public string FileName { get; private set; }
-        public int? FileId { get; private set; }
-        public ulong FileSize { get; private set; }
-        public uint CreatedTime { get; private set; }
-        public uint ModifiedTime { get; private set; }
-        public uint AccessedTime { get; private set; }
-        public List<byte[]> FileData { get; private set; }
-        public ushort Mode { get; private set; }
-        public string FileType { get; private set; }
+        public int? ParentId { get; set; }
+        public string FileName { get; set; }
+        public int FileId { get; set; }
+        public ulong FileSize { get; set; }
+        public uint CreatedTime { get; set; }
+        public uint ModifiedTime { get; set; }
+        public uint AccessedTime { get; set; }
+        public List<byte[]> FileData { get; set; }
+        public ushort Mode { get; set; }
+        public string FileType { get; set; }
 
         public File(DirEntry? directory, INode inode, FileStream fStream, int blockSize, long offset)
         {
