@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -12,6 +7,12 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Windows.Storage.Pickers;
 using QNX6FSRebuilder.UI.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 
@@ -29,6 +30,23 @@ namespace QNX6FSRebuilder.UI
         public MainWindow()
         {
             InitializeComponent();
+
         }
+
+        private void PartitionListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ViewModel is not MainWindowViewModel vm)
+                return;
+
+            foreach(PartitionViewModel added in e.AddedItems)
+            {
+                if (!vm.SelectedPartitions.Contains(added))
+                    vm.SelectedPartitions.Add(added);
+            }
+
+            foreach (PartitionViewModel removed in e.RemovedItems)
+                vm.SelectedPartitions.Remove(removed);
+        }
+
     }
 }

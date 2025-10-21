@@ -7,7 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls" xmlns:local1="using:QNX6FSRebuilder.UI.ViewModels"
     Title="QNX6 File System Rebuilder">
 
     <Window.SystemBackdrop>
@@ -98,35 +98,28 @@
                                   Style="{StaticResource BodyStrongTextBlockStyle}" 
                                   Margin="0,0,0,12" />
 
-                        <CheckBox x:Name="PreserveTimestampsCheckBox" 
-                                 Content="Preserve timestamps" 
-                                 IsChecked="True"
-                                 Margin="0,0,0,8" />
 
-                        <CheckBox x:Name="ValidateChecksumCheckBox" 
-                                 Content="Validate checksums" 
-                                 IsChecked="True"
-                                 Margin="0,0,0,12" />
-
-                        <CheckBox x:Name="GetDeletedFilesCheckBox"
-                                  Content="Get deleted files"
-                                  IsChecked="True"
-                                  Margin="0,0,0,12"></CheckBox>
-                        
-                        <CheckBox x:Name="ParseSecondSuperblock"
-                                  Content="Parse second superblock"
-                                  Margin="0,0,0,12"></CheckBox>
-
-                        <TextBlock Text="Output Format" 
-                                  Style="{StaticResource CaptionTextBlockStyle}" 
-                                  Margin="0,0,0,4" />
-                        <ComboBox x:Name="OutputFormatComboBox" 
-                                 HorizontalAlignment="Stretch"
-                                 SelectedIndex="0">
-                            <ComboBoxItem Content="Directory Tree" />
-                            <ComboBoxItem Content="Archive (TAR)" />
-                            <ComboBoxItem Content="Archive (ZIP)" />
-                        </ComboBox>
+                        <TextBlock Text="Select Partition(s)"
+                                   Style="{StaticResource CaptionTextBlockStyle}"
+                                   Margin="0, 0, 0, 4"></TextBlock>
+                        <ListView x:Name="PartitionListView"
+                                    ItemsSource="{x:Bind ViewModel.Partitions, Mode=OneWay}"
+                                    SelectionMode="Multiple"
+                                    IsEnabled="{x:Bind ViewModel.IsOptionsEnabled, Mode=OneWay}"
+                                    Height="120"
+                                    SelectionChanged="PartitionListView_SelectionChanged"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="local1:PartitionViewModel">
+                                    <StackPanel Orientation="Horizontal" Padding="8,4">
+                                        <TextBlock Text="{x:Bind DisplayName}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
                     </StackPanel>
                 </Border>
 
@@ -222,19 +215,37 @@
                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                        BorderThickness="1"
                        CornerRadius="4">
-                    <ScrollViewer x:Name="LogScrollViewer" 
-                                 ZoomMode="Disabled"
-                                 HorizontalScrollMode="Auto"
-                                 HorizontalScrollBarVisibility="Auto"
-                                 VerticalScrollBarVisibility="Auto">
-                        <TextBlock x:Name="LogTextBlock" 
-                                  FontFamily="Consolas, Courier New"
-                                  FontSize="12"
-                                  Padding="12"
-                                  TextWrapping="NoWrap"
-                                  Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                                  Text="{x:Bind ViewModel.LogText, Mode=TwoWay}"/>
-                    </ScrollViewer>
+                    <ListView x:Name="LogListView"
+          ItemsSource="{x:Bind ViewModel.LogEntries, Mode=OneWay}"
+          IsItemClickEnabled="False"
+          SelectionMode="None"
+          IsTabStop="False"
+          Background="Black"
+          BorderThickness="0"
+          Padding="0"
+          ScrollViewer.HorizontalScrollMode="Enabled"
+          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+          ScrollViewer.VerticalScrollMode="Enabled"
+          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             >
+
+                        <ListView.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <ItemsStackPanel Orientation="Vertical"
+                             AreStickyGroupHeadersEnabled="False"/>
+                            </ItemsPanelTemplate>
+                        </ListView.ItemsPanel>
+
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{Binding}"
+                       FontFamily="Consolas, Courier New"
+                       FontSize="12"
+                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                       Padding="4,2" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
                 </Border>
             </Grid>
         </Border>

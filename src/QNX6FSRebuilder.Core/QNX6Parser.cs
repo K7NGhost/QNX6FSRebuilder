@@ -42,6 +42,15 @@ namespace QNX6FSRebuilder.Core
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        public void SetupQNX6Parser(string filePath, string outputPath)
+        {
+            if (string.IsNullOrWhiteSpace(outputPath))
+                return;
+            extractionFolder = Path.Combine(outputPath, "extracted");
+            loggingPath = Path.Combine(outputPath, "logs");
+            fStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        }
+
         public async Task ParseQNX6Async(string filePath, string outputPath)
         {
             if (string.IsNullOrWhiteSpace(outputPath))
@@ -273,6 +282,7 @@ namespace QNX6FSRebuilder.Core
             foreach (var f in files)
             {
                 string path = Helpers.Helpers.BuildPaths(fileMap, f);
+                _logger.LogInformation($"Built the path: {path}");
                 if (!string.IsNullOrEmpty(path))
                     paths[(uint)f.FileId] = path;
             }
@@ -307,7 +317,6 @@ namespace QNX6FSRebuilder.Core
                     }
                     catch (Exception tsEx)
                     {
-                        _logger.LogWarning(tsEx, $"Failed to set timestamps for: {fullPath}");
                     }
 
                     // Write file contents

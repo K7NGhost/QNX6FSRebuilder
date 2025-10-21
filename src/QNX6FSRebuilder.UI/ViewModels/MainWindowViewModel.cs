@@ -37,8 +37,6 @@ namespace QNX6FSRebuilder.UI.ViewModels
         [ObservableProperty]
         private bool preserveTimestamps = true;
 
-        [ObservableProperty]
-        private string logText = "Ready to process QNX6 disk image...";
 
         [ObservableProperty]
         private string statusText = "Ready";
@@ -65,7 +63,13 @@ namespace QNX6FSRebuilder.UI.ViewModels
         private bool isOptionsEnabled;
 
         [ObservableProperty]
-        private ObservableCollection<Partition> partitions = new();
+        private ObservableCollection<PartitionViewModel> partitions = new();
+
+        [ObservableProperty]
+        private ObservableCollection<PartitionViewModel> selectedPartitions = new();
+
+        // Terminal text object
+        public ObservableCollection<string> LogEntries { get; } = new();
 
 
         public MainWindowViewModel(ILogger<MainWindowViewModel> logger)
@@ -86,9 +90,23 @@ namespace QNX6FSRebuilder.UI.ViewModels
                 _logger.LogInformation("Reading partitions...");
                 await Task.Run(() =>
                 {
-                    var parts = App.GetService<QNX6Parser>().GetAllPartitions();
-                    foreach (var p in parts)
-                        Partitions.Add(p);
+                    var parser = App.GetService<QNX6Parser>();
+                    parser.SetupQNX6Parser(SelectedFilePath, SelectedOutputPath);
+                    var parts = parser.GetAllPartitions();
+
+                    _dispatcherQueue.TryEnqueue(() =>
+                    {
+                        for (int i = 0; i < parts.Count; i++)
+                        {
+                            Partitions.Add(new PartitionViewModel
+                            {
+                                Index = i,
+                                Partition = parts[i]
+                            });
+                        }
+                    });
+                   
+                        
                 });
 
                 _logger.LogInformation($"Found {Partitions.Count} partitions.");
@@ -105,10 +123,24 @@ namespace QNX6FSRebuilder.UI.ViewModels
         [RelayCommand]
         private async Task ParseSelectedPartitionsAsync()
         {
-            foreach(var partition in Partitions)
+            try
             {
-                await App.GetService<QNX6Parser>().ParsePartitionAsync(partition);
+                var parser = App.GetService<QNX6Parser>();
+                parser.SetupQNX6Parser(SelectedFilePath, SelectedOutputPath);
+
+                foreach (var partition in SelectedPartitions)
+                {
+                    _logger.LogInformation($"Parsing {partition.DisplayName}...");
+                    await parser.ParsePartitionAsync(partition.Partition);
+                }
+
+                _logger.LogInformation("All selected partitions parsed successfully.");
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while parsing partitions");
+            }
+
         }
 
         [RelayCommand]
@@ -236,13 +268,13 @@ namespace QNX6FSRebuilder.UI.ViewModels
         {
             var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
             var logEntry = $"[{timestamp}] {message}";
-            LogText += string.IsNullOrEmpty(LogText) ? logEntry : $"\n{logEntry}";
+            LogEntries.Add(logEntry);
         }
 
         [RelayCommand]
         private void ClearLog()
         {
-            LogText = string.Empty;
+            LogEntries.Clear();
             FileCount = 0;
             StatusText = "Ready";
 
@@ -257,7 +289,7 @@ namespace QNX6FSRebuilder.UI.ViewModels
         {
             sinkSetter(msg => _dispatcherQueue.TryEnqueue(() =>
             {
-                LogText += msg + Environment.NewLine;
+                LogEntries.Add(msg);
             }));
         }
     }
